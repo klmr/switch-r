@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+r_base=/Library/Frameworks/R.framework/Versions
+
+r_versions=()
+while IFS='' read -rd '' version; do
+    [[ $version =~ /Versions$ ]] && continue;
+    r_versions+=("$(basename "$version")")
+done < <(find "$r_base" -maxdepth 1 -not -name Current -print0)
+
+# shellcheck disable=SC2207
+r_versions=($(IFS=$'\n'; sort<<<"${r_versions[*]}"))
+
+if ((${#r_versions[@]} < 2)); then
+    printf >&2 "\x1b[31mError\x1b[0m: There are no multiple R versions installed as frameworks.\n\n"
+    exit 1
+fi
+
+if (($# != 1)); then
+    IFS=,
+    printf >&2 "\x1b[31mError\x1b[0m: please specify an R version (%s).\n\n" "${r_versions[*]@Q}"
+    exit 1
+fi
+
+if [[ $1 == --help || $1 == -h ]]; then
+    printf >&2 "%s [--list|--current|‹version›]\n\n" "$0"
+    exit 0
+fi
+
+if [[ $1 == --current || $1 == -c ]]; then
+    readlink "$r_base/Current"
+    exit 0
+fi
+
+if [[ $1 == --list || $1 == -l ]]; then
+    current=$(basename "$(readlink "$r_base/Current")")
+    for vers in "${r_versions[@]}"; do
+        if [[ $vers == "$current" ]]; then
+            echo "✔︎ $vers"
+        else
+            echo "· $vers"
+        fi
+    done
+    exit 0
+fi
+
+version=$1
+found=0
+
+for v in "${r_versions[@]}"; do
+    if [[ $version == "$v" ]]; then
+        found=1
+        break
+    fi
+done
+
+if ! ((found)); then
+    IFS=,
+    printf >&2 \
+        "\x1b[31mError\x1b[0m: invalid R version specified (“%s”), please specify a valid version (%s).\n\n" \
+        "$version" "${r_versions[*]@Q}"
+    exit 1
+fi
+
+rm -f "$r_base/Current"
+ln -s "$r_base/$version" "$r_base/Current"
+readlink "$r_base/Current"
