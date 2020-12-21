@@ -9,6 +9,9 @@ curl -L https://raw.githubusercontent.com/klmr/switch-r/main/switch-r >~/bin/swi
 chmod +x ~/bin/switch-r
 ```
 
+Next, ensure that `~/bin` is on your `PATH` — or copy the script to a location
+that is.
+
 ## Usage
 
 ```bash
